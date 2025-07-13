@@ -1,0 +1,58 @@
+---
+title: "Arrests by US State"
+author: "Dennis Wandschura"
+date: "2025-07-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(leaflet)
+library(sf)
+library(dplyr)
+library(tibble)
+```
+
+```{r crime, echo=FALSE, warning=FALSE}
+
+arrests <- USArrests %>% 
+        rownames_to_column(var = "name") %>%
+        as_tibble %>%
+        mutate(total = Murder + Assault + Rape)
+    
+    states <- sf::read_sf("https://rstudio.github.io/leaflet/json/us-states.geojson") %>% 
+        left_join(arrests, by = join_by(name))
+    
+    bins <- seq(25, 400, by = 25)
+    pal <- colorBin("YlOrRd", domain = states$total, bins = bins)
+    labels <- sprintf(
+        "<strong>%s</strong><br/>%g arrests per 100k",
+        states$name, states$total
+    ) %>% lapply(htmltools::HTML)
+
+        m <- leaflet(states) %>%
+            setView(-96, 37.8, 4) %>%
+            addTiles()
+        m %>% addPolygons(
+            fillColor = ~pal(total),
+            weight = 2,
+            opacity = 1,
+            color = "white",
+            dashArray = 3,
+            fillOpacity = 0.7,
+            highlightOptions =  highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE
+            ),
+            label = labels,
+            labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"
+            )
+        )
+```
